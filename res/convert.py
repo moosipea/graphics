@@ -8,6 +8,8 @@ if len(sys.argv) < 2:
 
 image_path = sys.argv[1]
 
+use_atlas = "atlas" in sys.argv;
+
 sprite_size = 8
 positions = [
     ("WIRE_VERTICAL", 0, 0),
@@ -44,27 +46,35 @@ positions = [
 
 definitions = []
 
-with Image.open(image_path) as im:
-    for name, x, y in positions:
-        rect = (
-            x * sprite_size,
-            y * sprite_size,
-            (x + 1) * sprite_size,
-            (y + 1) * sprite_size,
-        )
-        sprite_region = im.crop(rect)
-        sprite = numpy.array(sprite_region).ravel()
-        chunks = list(numpy.split(sprite, sprite_size**2)) # ?
-        
-        # abandon numpy
-        rgba = lambda arr: arr[0] << 24 | arr[1] << 16 | arr[2] << 8 | arr[3]  # rgba
-        shifted = [rgba(chunk) for chunk in chunks]
-        colors = ", ".join([hex(color) for color in shifted])
-
-        definitions.append(f"const int SPRITE_{name}[] = \u007b{colors}\u007d;")
 
 header = f"#ifndef SPRITEDATA_H\n#define SPRITEDATA_H\n#define SPRITE_SIZE {sprite_size}"
-body = '\n'.join(definitions)
 footer = "#endif"
 
+def get_color_string(image: Image):
+    rgba = lambda arr: arr[0] << 24 | arr[1] << 16 | arr[2] << 8 | arr[3]
+    width, height = image.size
+    pixel_count = width * height
+    raw = numpy.array(image).ravel()
+    chunks = list(numpy.split(raw, pixel_count))
+    shifted = [rgba(chunk) for chunk in chunks]
+    return ", ".join([hex(color) for color in shifted])
+
+with Image.open(image_path) as im:
+    if use_atlas:
+        colors = get_color_string(im)
+        body = f"const int ATLAS[{64 * 64}] = \u007b{colors}\u007d;"
+    else:
+        for name, x, y in positions:
+            rect = (
+                x * sprite_size,
+                y * sprite_size,
+                (x + 1) * sprite_size,
+                (y + 1) * sprite_size,
+            )
+            sprite_region = im.crop(rect)
+            colors = get_color_string(sprite_region)
+            definitions.append(f"const int SPRITE_{name}[] = \u007b{colors}\u007d;")
+        
+        body = '\n'.join(definitions)
+        
 print(f"{header}\n{body}\n{footer}")
