@@ -1,7 +1,6 @@
-#include <glad/gl.h>
-#include <GLFW/glfw3.h>
 #include <stdio.h>
 
+#include "render.h"
 #include "spritedata.h"
 #include "shaderdata.h"
 
@@ -23,60 +22,6 @@ void texture_business() {
     glGenerateMipmap(GL_TEXTURE_2D);
 }
 
-GLFWwindow* create_window(int width, int height, const char *title) {
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    return glfwCreateWindow(WIDTH, HEIGHT, TITLE, NULL, NULL);
-}
-
-int compile_shader(unsigned int shader, const char *src) {
-    int success;
-    char info_log[512];
-    glShaderSource(shader, 1, &src, NULL);
-    glCompileShader(shader);
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-
-    if (!success) {
-        glGetShaderInfoLog(shader, 512, NULL, info_log);
-        printf("Shader compilation error: %s\n", info_log);
-        return 0;
-    }
-
-    return 1;
-}
-
-unsigned int compile_shaders(const char *vertex_src, const char *fragment_src) {
-    unsigned int vertex_shader, fragment_shader;
-    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-
-    if (!compile_shader(vertex_shader, vertex_src))
-        return 1;
-    if (!compile_shader(fragment_shader, fragment_src))
-        return 1;
-
-    unsigned int shader_program;
-    shader_program = glCreateProgram();
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-    glLinkProgram(shader_program);
-
-    int success;
-    char info_log[512];
-    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
-    if(!success) {
-        glGetProgramInfoLog(shader_program, 512, NULL, info_log);
-        printf("Program linking error: %s\n", info_log);
-        return 0;
-    }
-    
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-
-    return shader_program;
-}
-
 int main() {
     if (!glfwInit())
         return 1;
@@ -91,11 +36,7 @@ int main() {
     gladLoadGL(glfwGetProcAddress);
     
     //texture_business();
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f, 0.5f, 0.0f
-    };
+    
 
     unsigned int shader_program = compile_shaders(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
     if (!shader_program) {
@@ -103,22 +44,30 @@ int main() {
         return 1;
     }
 
-    unsigned int vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    float vertices[] = {
+        -0.5f, -0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+        0.0f, 0.5f, 0.0f
+    };
+
+    Mesh mesh = create_mesh(vertices, sizeof(vertices));
+    printf("Mesh\n\tvbo = %d\n\tvao = %d", mesh.vbo, mesh.vao);
 
     while (!glfwWindowShouldClose(window)) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
+        glViewport(0, 0, width, height);
 
-        glClearColor(0.7f, 0.9f, 0.1f, 1.0f);
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shader_program);
+        Mesh_draw(mesh); // I don't know why it's not showing up
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
+    
     glfwTerminate();
     return 0;
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(graphics C)
-add_executable(${PROJECT_NAME} src/main.c)
+add_executable(${PROJECT_NAME} src/main.c src/render.c)
 
 add_subdirectory(external/glfw)
 
